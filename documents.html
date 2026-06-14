@@ -62,6 +62,12 @@
             color: #fff;
         }
         .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+        .btn-google {
+            background: #fff;
+            color: #333;
+            border: none;
+        }
+        .btn-google:hover { background: #f0f0f0; }
         input, select, textarea {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -93,6 +99,18 @@
         .document-view h3 { color: var(--gold); margin-bottom: 12px; }
         .document-view p { margin-bottom: 8px; }
         .document-view span { color: #fff; font-weight: 600; }
+        .auth-switch {
+            margin-top: 16px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .auth-switch a {
+            color: var(--gold);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .auth-switch a:hover { color: var(--gold-hover); }
     </style>
 </head>
 <body>
@@ -102,22 +120,36 @@
         <!-- Авторизация -->
         <div class="card" id="auth-section">
             <h2><i class="fa-solid fa-lock"></i> Доступ работника</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 12px;">Сотрудники банка входят по email и паролю. Новые регистрируются и ожидают одобрения админа.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 12px;">Сотрудники банка входят по email или через Google. Новые регистрируются и ожидают одобрения администратора.</p>
+
             <div id="auth-forms">
-                <div id="register-form">
+                <!-- Форма регистрации (по умолчанию скрыта, покажем позже) -->
+                <div id="register-form" style="display: none;">
                     <h3>Регистрация</h3>
                     <input type="email" id="reg-email" placeholder="Email">
                     <input type="password" id="reg-password" placeholder="Пароль">
                     <button class="btn" onclick="register()"><i class="fa-solid fa-user-plus"></i> Зарегистрироваться</button>
+                    <div class="auth-switch">
+                        Уже есть аккаунт? <a onclick="showLogin()">Войти</a>
+                    </div>
                 </div>
-                <div id="login-form" style="margin-top: 20px;">
+
+                <!-- Форма входа (показывается первой) -->
+                <div id="login-form">
                     <h3>Вход</h3>
                     <input type="email" id="login-email" placeholder="Email">
                     <input type="password" id="login-password" placeholder="Пароль">
                     <button class="btn" onclick="login()"><i class="fa-solid fa-right-to-bracket"></i> Войти</button>
+                    <button class="btn btn-google" onclick="loginWithGoogle()" style="margin-top: 8px;">
+                        <i class="fa-brands fa-google"></i> Войти через Google
+                    </button>
+                    <div class="auth-switch">
+                        Нет аккаунта? <a onclick="showRegister()">Зарегистрироваться</a>
+                    </div>
                 </div>
                 <div id="auth-message" class="alert" style="display: none;"></div>
             </div>
+
             <div id="user-panel" style="display: none;">
                 <p>Вы вошли как <strong id="current-user"></strong> <span id="approved-badge" style="color: var(--gold); display: none;">(доступ разрешён)</span></p>
                 <button class="btn btn-outline" onclick="logout()"><i class="fa-solid fa-sign-out-alt"></i> Выйти</button>
@@ -181,6 +213,18 @@
         const auth = firebase.auth();
         const db = firebase.database();
 
+        // --- Состояние UI (переключение форм) ---
+        function showRegister() {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'block';
+            document.getElementById('auth-message').style.display = 'none';
+        }
+        function showLogin() {
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('login-form').style.display = 'block';
+            document.getElementById('auth-message').style.display = 'none';
+        }
+
         // --- Глобальные переменные ---
         let currentUserRole = null; // 'admin', 'worker', 'pending' или null
 
@@ -202,7 +246,6 @@
                     approvedBadge.style.display = 'none';
                     createSection.style.display = 'none';
                 }
-                // Админ-панель видна только админу
                 if (currentUserRole === 'admin') {
                     adminSection.style.display = 'block';
                     loadPendingUsers();
@@ -213,6 +256,8 @@
                 createSection.style.display = 'none';
                 adminSection.style.display = 'none';
                 approvedBadge.style.display = 'none';
+                // По умолчанию показываем форму входа
+                showLogin();
             }
         }
 
@@ -220,9 +265,8 @@
         async function loadUserRole(uid) {
             try {
                 const snap = await db.ref('roles/' + uid).once('value');
-                currentUserRole = snap.val() || 'pending'; // если нет записи - считаем ожидающим
+                currentUserRole = snap.val() || 'pending';
                 if (currentUserRole === 'pending') {
-                    // Создаём запись в users с пометкой pending, если её нет
                     await db.ref('users/' + uid).update({
                         email: auth.currentUser.email,
                         role: 'pending'
@@ -252,19 +296,19 @@
             if (!email || !password) { showMessage(msg, 'error', 'Введите email и пароль.'); return; }
             try {
                 const userCred = await auth.createUserWithEmailAndPassword(email, password);
-                // Устанавливаем роль pending
                 await db.ref('roles/' + userCred.user.uid).set('pending');
                 await db.ref('users/' + userCred.user.uid).set({
                     email: email,
                     role: 'pending'
                 });
                 showMessage(msg, 'success', 'Регистрация прошла успешно. Ожидайте одобрения администратора.');
+                // Не переключаемся, окно входа останется после перезагрузки состояния
             } catch (error) {
                 showMessage(msg, 'error', error.message);
             }
         }
 
-        // --- Вход ---
+        // --- Вход по email ---
         async function login() {
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value.trim();
@@ -272,9 +316,32 @@
             if (!email || !password) { showMessage(msg, 'error', 'Введите email и пароль.'); return; }
             try {
                 await auth.signInWithEmailAndPassword(email, password);
-                showMessage(msg, 'none'); // скрыть сообщение
+                showMessage(msg, 'none');
             } catch (error) {
                 showMessage(msg, 'error', error.message);
+            }
+        }
+
+        // --- Вход через Google ---
+        async function loginWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                const result = await auth.signInWithPopup(provider);
+                // После входа Google пользователь автоматически получает роль 'pending', если её нет
+                const user = result.user;
+                const snap = await db.ref('roles/' + user.uid).once('value');
+                if (!snap.exists()) {
+                    await db.ref('roles/' + user.uid).set('pending');
+                    await db.ref('users/' + user.uid).set({
+                        email: user.email,
+                        role: 'pending'
+                    });
+                }
+                // Состояние обновится через onAuthStateChanged
+            } catch (error) {
+                if (error.code !== 'auth/popup-closed-by-user') {
+                    showMessage(document.getElementById('auth-message'), 'error', error.message);
+                }
             }
         }
 
@@ -312,7 +379,6 @@
                 await db.ref('roles/' + uid).set('worker');
                 await db.ref('users/' + uid + '/role').set('worker');
                 loadPendingUsers();
-                // Если одобрили текущего пользователя, обновим его роль
                 if (auth.currentUser && auth.currentUser.uid === uid) {
                     currentUserRole = 'worker';
                     updateUI();
@@ -364,7 +430,6 @@
                 if (!docs) {
                     resultDiv.innerHTML = '<div class="alert alert-error">Документ не найден.</div>';
                 } else {
-                    // Берём первый найденный (номер уникален)
                     const key = Object.keys(docs)[0];
                     const doc = docs[key];
                     resultDiv.innerHTML = `
@@ -396,6 +461,9 @@
             el.className = 'alert ' + (type === 'error' ? 'alert-error' : 'alert-success');
             el.innerHTML = text;
         }
+
+        // --- Инициализация: показываем форму входа ---
+        showLogin();
     </script>
 </body>
 </html>
