@@ -181,11 +181,78 @@
             margin-top: 40px;
         }
         footer a { color: var(--gold); text-decoration: none; }
+
+        /* Модальное окно */
+        .modal-overlay {
+            display: flex;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0s 0.3s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease, visibility 0s 0s;
+        }
+        .modal-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px 24px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            color: var(--text);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            transform: translateY(30px);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-card {
+            transform: translateY(0);
+        }
+        .modal-card h3 {
+            color: #fff;
+            margin-bottom: 16px;
+            font-size: 1.3rem;
+        }
+        .modal-card p {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 1rem;
+        }
+        .modal-card .server-ip {
+            color: var(--gold);
+            font-weight: 700;
+            font-size: 1.2rem;
+            background: var(--surface);
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 6px;
+            margin: 8px 0 20px;
+            user-select: all;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        .modal-buttons .btn {
+            flex: 1;
+            justify-content: center;
+        }
         @media (max-width: 600px) {
             .navbar { padding: 12px 16px; }
             .nav-links a { padding: 6px 10px; font-size: 0.85rem; }
             .hero { padding: 50px 16px 36px; }
             .section { padding: 32px 16px; }
+            .modal-card { padding: 24px 16px; }
         }
     </style>
 </head>
@@ -211,7 +278,7 @@
             <span class="badge"><i class="fa-solid fa-id-card"></i> Уникальная система док-ов</span>
         </div>
         <div class="hero-buttons">
-            <a href="#" class="btn btn-primary"><i class="fa-solid fa-gamepad"></i> Подключиться</a>
+            <a href="#" class="btn btn-primary" id="connectBtn"><i class="fa-solid fa-gamepad"></i> Подключиться</a>
             <a href="documents.html" class="btn btn-outline"><i class="fa-solid fa-file-lines"></i> Система документов</a>
         </div>
     </section>
@@ -289,18 +356,99 @@
         <p>© 2024 <a href="#">GoCity RP</a>. Все права защищены. | Система документов v1.0 | <a href="documents.html">Панель документов</a></p>
     </footer>
 
+    <!-- Модальное окно подключения -->
+    <div class="modal-overlay" id="connectModal">
+        <div class="modal-card">
+            <h3><i class="fa-solid fa-gamepad"></i> Подключение к GoCity</h3>
+            <p>Играешь на Java Edition?</p>
+            <div class="server-ip">golka.falix.me</div>
+            <p style="font-size:0.9rem; color: var(--text-secondary);">Порт: 21018 (автоматически)</p>
+            <div class="modal-buttons">
+                <button class="btn btn-outline" id="closeModalBtn"><i class="fa-solid fa-xmark"></i> Закрыть</button>
+                <button class="btn btn-primary" id="tryAgainBtn"><i class="fa-solid fa-rotate-right"></i> Попробовать снова</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        fetch('rules.md')
-            .then(response => {
-                if (!response.ok) throw new Error('Файл не найден');
-                return response.text();
-            })
-            .then(md => {
-                document.getElementById('rules-content').innerHTML = marked.parse(md);
-            })
-            .catch(() => {
-                document.getElementById('rules-content').innerHTML = '<p>⚠️ Файл <code>rules.md</code> не найден. Создайте его в корне репозитория, и правила появятся здесь.</p>';
-            });
+        // --- Правила ---
+        const rulesContainer = document.getElementById('rules-content');
+        async function loadRules() {
+            try {
+                const response = await fetch('rules.md');
+                if (!response.ok) throw new Error(`Файл не найден. Статус: ${response.status}`);
+                const markdown = await response.text();
+                if (typeof marked !== 'undefined') {
+                    rulesContainer.innerHTML = marked.parse(markdown);
+                } else {
+                    rulesContainer.innerHTML = `<pre style="white-space: pre-wrap;">${escapeHtml(markdown)}</pre>`;
+                }
+            } catch (err) {
+                console.error('Ошибка правил:', err);
+                rulesContainer.innerHTML = `
+                    <div style="background: #3a1a1a; padding: 12px; border-radius: 6px; color: #ff8d8d;">
+                        ⚠️ Не удалось загрузить правила.<br>
+                        <small>${escapeHtml(err.message)}</small><br>
+                        <small>Создайте файл <code>rules.md</code> в корне репозитория.</small>
+                    </div>
+                `;
+            }
+        }
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+        loadRules();
+
+        // --- Подключение ---
+        const connectBtn = document.getElementById('connectBtn');
+        const modal = document.getElementById('connectModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const tryAgainBtn = document.getElementById('tryAgainBtn');
+        let modalTimer = null;
+
+        function openModal() {
+            modal.classList.add('active');
+        }
+        function closeModal() {
+            modal.classList.remove('active');
+            if (modalTimer) {
+                clearTimeout(modalTimer);
+                modalTimer = null;
+            }
+        }
+
+        connectBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Сразу открываем ссылку Minecraft
+            window.location.href = 'minecraft://?addExternalServer=golka.falix.me|golka.falix.me:21018';
+
+            // Показываем модальное окно через 2 секунды
+            if (modalTimer) clearTimeout(modalTimer);
+            modalTimer = setTimeout(() => {
+                openModal();
+                modalTimer = null;
+            }, 1000);
+        });
+
+        closeModalBtn.addEventListener('click', closeModal);
+
+        tryAgainBtn.addEventListener('click', () => {
+            // Ещё раз открываем ссылку
+            window.location.href = 'minecraft://?addExternalServer=golka.falix.me|golka.falix.me:21018';
+            // Окно можно оставить открытым, чтобы игрок мог скопировать IP
+        });
+
+        // Закрытие по клику вне карточки
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
     </script>
 </body>
 </html>
