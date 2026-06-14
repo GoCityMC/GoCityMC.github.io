@@ -92,7 +92,7 @@
             padding: 20px; margin-top: 16px;
         }
         .document-view h3 { color: var(--gold); margin-bottom: 12px; }
-        .document-view p { margin-bottom: 8px; }
+        .document-view p { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
         .document-view span { color: #fff; font-weight: 600; }
         .expired { color: #ff8d8d; }
         .valid { color: #8dffb6; }
@@ -301,7 +301,6 @@
             if (sectionId === 'my-docs') loadMyDocs();
             if (sectionId === 'my-account') loadAccountInfo();
             if (sectionId === 'admin') {
-                // по умолчанию покажем вкладку users
                 switchAdminTab('users');
                 loadAllUsers();
             }
@@ -315,7 +314,6 @@
             });
         });
 
-        // Переключение вкладок внутри админ-панели
         function switchAdminTab(tab) {
             document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelector(`.admin-tab-btn[data-admin-tab="${tab}"]`).classList.add('active');
@@ -464,10 +462,12 @@
                         const exp = doc.expirationDate ? new Date(doc.expirationDate) : null;
                         const now = new Date();
                         const valid = exp ? exp >= now : true;
+                        const statusIcon = valid ? '<i class="fa-solid fa-check-circle valid"></i>' : '<i class="fa-solid fa-times-circle expired"></i>';
+                        const statusText = valid ? 'Действителен' : 'Просрочен';
                         html += `<li>
                             <span><strong>${doc.type}</strong> – ${doc.number}</span>
                             <span style="color:var(--text-secondary);">${doc.date} ${exp ? '| до ' + exp.toLocaleDateString() : ''}</span>
-                            <span class="${valid ? 'valid' : 'expired'}">${valid ? 'Действителен' : 'Просрочен'}</span>
+                            <span class="${valid ? 'valid' : 'expired'}">${statusIcon} ${statusText}</span>
                         </li>`;
                     });
                     html += '</ul>';
@@ -488,6 +488,7 @@
                 const exp = doc.expirationDate ? new Date(doc.expirationDate) : null;
                 const now = new Date();
                 const valid = exp ? exp >= now : true;
+                const statusIcon = valid ? '<i class="fa-solid fa-check-circle valid"></i>' : '<i class="fa-solid fa-times-circle expired"></i>';
                 resultDiv.innerHTML = `
                     <div class="document-view">
                         <h3><i class="fa-solid fa-file-lines"></i> ${doc.type}</h3>
@@ -496,7 +497,7 @@
                         <p><span>Дата выдачи:</span> ${doc.date}</p>
                         <p><span>Кем выдан:</span> ${doc.issuedBy}</p>
                         ${exp ? `<p><span>Срок действия:</span> до ${exp.toLocaleDateString()}</p>` : ''}
-                        <p class="${valid ? 'valid' : 'expired'}"><strong>${valid ? 'Документ действителен' : 'Документ просрочен'}</strong></p>
+                        <p class="${valid ? 'valid' : 'expired'}">${statusIcon} <strong>${valid ? 'Документ действителен' : 'Документ просрочен'}</strong></p>
                     </div>`;
             } catch (e) { resultDiv.innerHTML = `<div class="alert alert-error">Ошибка: ${e.message}</div>`; }
         }
@@ -511,7 +512,6 @@
             const msg = document.getElementById('create-message');
             if (!player || !date) { showMessage(msg, 'error', 'Заполните ник и дату.'); return; }
             const number = generateDocNumber();
-            // Вычисляем дату истечения: +1 год
             const issueDate = new Date(date);
             const expirationDate = new Date(issueDate);
             expirationDate.setFullYear(expirationDate.getFullYear() + 1);
@@ -535,7 +535,6 @@
             return result;
         }
 
-        // Админ-панель: загрузка всех пользователей
         async function loadAllUsers() {
             const tbody = document.getElementById('all-users-list');
             tbody.innerHTML = '<tr><td colspan="4">Загрузка...</td></tr>';
@@ -583,7 +582,6 @@
             }
         }
 
-        // Статистика
         async function loadStats() {
             const container = document.getElementById('stats-content');
             container.innerHTML = 'Загрузка...';
@@ -602,10 +600,10 @@
                 }
                 const totalDocs = Object.keys(docs).length;
                 container.innerHTML = `
-                    <p>👥 Игроков: <strong>${playerCount}</strong></p>
-                    <p>🏦 Работников банка: <strong>${workerCount}</strong></p>
-                    <p>🛡️ Администраторов: <strong>${adminCount}</strong></p>
-                    <p>📄 Всего документов: <strong>${totalDocs}</strong></p>
+                    <p><i class="fa-solid fa-user"></i> Игроков: <strong>${playerCount}</strong></p>
+                    <p><i class="fa-solid fa-building-columns"></i> Работников банка: <strong>${workerCount}</strong></p>
+                    <p><i class="fa-solid fa-user-shield"></i> Администраторов: <strong>${adminCount}</strong></p>
+                    <p><i class="fa-solid fa-file-lines"></i> Всего документов: <strong>${totalDocs}</strong></p>
                 `;
             } catch (e) {
                 container.innerHTML = `<div class="alert alert-error">Ошибка: ${e.message}</div>`;
