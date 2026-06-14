@@ -54,6 +54,7 @@
             align-items: center;
             gap: 8px;
             font-size: 0.95rem;
+            margin: 4px 0;
         }
         .btn:hover { background: var(--gold-hover); }
         .btn-outline {
@@ -111,6 +112,22 @@
             text-decoration: underline;
         }
         .auth-switch a:hover { color: var(--gold-hover); }
+        .google-separator {
+            display: flex;
+            align-items: center;
+            margin: 16px 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        .google-separator::before,
+        .google-separator::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+        .google-separator::before { margin-right: 10px; }
+        .google-separator::after { margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -120,29 +137,40 @@
         <!-- Авторизация -->
         <div class="card" id="auth-section">
             <h2><i class="fa-solid fa-lock"></i> Доступ работника</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 12px;">Сотрудники банка входят по email или через Google. Новые регистрируются и ожидают одобрения администратора.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                Сотрудники банка входят по email или через Google. Новые регистрируются и ожидают одобрения администратора.
+            </p>
 
             <div id="auth-forms">
-                <!-- Форма регистрации (по умолчанию скрыта, покажем позже) -->
+                <!-- Регистрация (скрыта по умолчанию) -->
                 <div id="register-form" style="display: none;">
                     <h3>Регистрация</h3>
                     <input type="email" id="reg-email" placeholder="Email">
                     <input type="password" id="reg-password" placeholder="Пароль">
                     <button class="btn" onclick="register()"><i class="fa-solid fa-user-plus"></i> Зарегистрироваться</button>
+
+                    <div class="google-separator">или</div>
+                    <button class="btn btn-google" onclick="loginWithGoogle()">
+                        <i class="fa-brands fa-google"></i> Войти через Google
+                    </button>
+
                     <div class="auth-switch">
                         Уже есть аккаунт? <a onclick="showLogin()">Войти</a>
                     </div>
                 </div>
 
-                <!-- Форма входа (показывается первой) -->
+                <!-- Вход (показывается первым) -->
                 <div id="login-form">
                     <h3>Вход</h3>
                     <input type="email" id="login-email" placeholder="Email">
                     <input type="password" id="login-password" placeholder="Пароль">
                     <button class="btn" onclick="login()"><i class="fa-solid fa-right-to-bracket"></i> Войти</button>
-                    <button class="btn btn-google" onclick="loginWithGoogle()" style="margin-top: 8px;">
+
+                    <div class="google-separator">или</div>
+                    <button class="btn btn-google" onclick="loginWithGoogle()">
                         <i class="fa-brands fa-google"></i> Войти через Google
                     </button>
+
                     <div class="auth-switch">
                         Нет аккаунта? <a onclick="showRegister()">Зарегистрироваться</a>
                     </div>
@@ -151,7 +179,16 @@
             </div>
 
             <div id="user-panel" style="display: none;">
-                <p>Вы вошли как <strong id="current-user"></strong> <span id="approved-badge" style="color: var(--gold); display: none;">(доступ разрешён)</span></p>
+                <p>
+                    Вы вошли как <strong id="current-user"></strong>
+                    <span id="approved-badge" style="color: var(--gold); display: none;"> (доступ разрешён)</span>
+                </p>
+                <!-- Место для привязки ника (в будущем) -->
+                <div id="nickname-area" style="display: none; margin: 12px 0;">
+                    <label>Ваш игровой ник</label>
+                    <input type="text" id="user-nickname" placeholder="Например, Ivan_Kotov" disabled>
+                    <button class="btn" onclick="saveNickname()" style="display:none;">Сохранить</button>
+                </div>
                 <button class="btn btn-outline" onclick="logout()"><i class="fa-solid fa-sign-out-alt"></i> Выйти</button>
             </div>
         </div>
@@ -194,7 +231,9 @@
             <div id="search-result"></div>
         </div>
 
-        <p style="text-align: center; margin-top: 30px;"><a href="index.html" class="btn btn-outline"><i class="fa-solid fa-arrow-left"></i> На главную GoCity</a></p>
+        <p style="text-align: center; margin-top: 30px;">
+            <a href="index.html" class="btn btn-outline"><i class="fa-solid fa-arrow-left"></i> На главную GoCity</a>
+        </p>
     </div>
 
     <script>
@@ -213,7 +252,7 @@
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // --- Состояние UI (переключение форм) ---
+        // --- Переключение форм ---
         function showRegister() {
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('register-form').style.display = 'block';
@@ -225,27 +264,33 @@
             document.getElementById('auth-message').style.display = 'none';
         }
 
-        // --- Глобальные переменные ---
-        let currentUserRole = null; // 'admin', 'worker', 'pending' или null
+        let currentUserRole = null;
 
-        // --- UI-обновление ---
+        // --- Обновление интерфейса ---
         function updateUI() {
             const user = auth.currentUser;
-            document.getElementById('auth-forms').style.display = user ? 'none' : 'block';
-            document.getElementById('user-panel').style.display = user ? 'block' : 'none';
+            const authForms = document.getElementById('auth-forms');
+            const userPanel = document.getElementById('user-panel');
             const createSection = document.getElementById('create-doc-section');
             const adminSection = document.getElementById('admin-section');
             const approvedBadge = document.getElementById('approved-badge');
+            const nicknameArea = document.getElementById('nickname-area');
 
             if (user) {
+                authForms.style.display = 'none';
+                userPanel.style.display = 'block';
                 document.getElementById('current-user').textContent = user.email;
+
                 if (currentUserRole === 'worker' || currentUserRole === 'admin') {
                     approvedBadge.style.display = 'inline';
                     createSection.style.display = 'block';
+                    // В будущем можно загрузить никнейм из базы
+                    nicknameArea.style.display = 'none'; // Пока скрыто
                 } else {
                     approvedBadge.style.display = 'none';
                     createSection.style.display = 'none';
                 }
+
                 if (currentUserRole === 'admin') {
                     adminSection.style.display = 'block';
                     loadPendingUsers();
@@ -253,15 +298,16 @@
                     adminSection.style.display = 'none';
                 }
             } else {
+                authForms.style.display = 'block';
+                userPanel.style.display = 'none';
                 createSection.style.display = 'none';
                 adminSection.style.display = 'none';
                 approvedBadge.style.display = 'none';
-                // По умолчанию показываем форму входа
                 showLogin();
             }
         }
 
-        // --- Загрузка роли текущего пользователя ---
+        // --- Загрузка роли ---
         async function loadUserRole(uid) {
             try {
                 const snap = await db.ref('roles/' + uid).once('value');
@@ -278,7 +324,7 @@
             }
         }
 
-        // --- Отслеживание состояния аутентификации ---
+        // --- Отслеживание аутентификации ---
         auth.onAuthStateChanged(user => {
             if (user) {
                 loadUserRole(user.uid);
@@ -302,7 +348,7 @@
                     role: 'pending'
                 });
                 showMessage(msg, 'success', 'Регистрация прошла успешно. Ожидайте одобрения администратора.');
-                // Не переключаемся, окно входа останется после перезагрузки состояния
+                // После регистрации автоматически войдёт, интерфейс обновится
             } catch (error) {
                 showMessage(msg, 'error', error.message);
             }
@@ -327,7 +373,6 @@
             const provider = new firebase.auth.GoogleAuthProvider();
             try {
                 const result = await auth.signInWithPopup(provider);
-                // После входа Google пользователь автоматически получает роль 'pending', если её нет
                 const user = result.user;
                 const snap = await db.ref('roles/' + user.uid).once('value');
                 if (!snap.exists()) {
@@ -337,7 +382,6 @@
                         role: 'pending'
                     });
                 }
-                // Состояние обновится через onAuthStateChanged
             } catch (error) {
                 if (error.code !== 'auth/popup-closed-by-user') {
                     showMessage(document.getElementById('auth-message'), 'error', error.message);
@@ -350,7 +394,7 @@
             auth.signOut();
         }
 
-        // --- Админ: загрузка списка ожидающих ---
+        // --- Админ: заявки ---
         async function loadPendingUsers() {
             const list = document.getElementById('pending-users');
             list.innerHTML = '';
@@ -373,7 +417,6 @@
             }
         }
 
-        // --- Админ: одобрить пользователя ---
         async function approveUser(uid) {
             try {
                 await db.ref('roles/' + uid).set('worker');
@@ -462,7 +505,7 @@
             el.innerHTML = text;
         }
 
-        // --- Инициализация: показываем форму входа ---
+        // --- Инициализация: показываем вход ---
         showLogin();
     </script>
 </body>
