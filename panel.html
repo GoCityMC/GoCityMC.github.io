@@ -94,6 +94,14 @@
         .document-view h3 { color: var(--gold); margin-bottom: 12px; }
         .document-view p { margin-bottom: 8px; }
         .document-view span { color: #fff; font-weight: 600; }
+        .expired { color: #ff8d8d; }
+        .valid { color: #8dffb6; }
+        .admin-tabs { display: flex; gap: 10px; margin-bottom: 16px; }
+        .admin-tab-btn {
+            background: var(--card); border: 1px solid var(--border); color: var(--text-secondary);
+            padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: var(--transition);
+        }
+        .admin-tab-btn.active { background: var(--gold); color: #1a1a1a; border-color: var(--gold); }
 
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
@@ -124,7 +132,7 @@
             <span id="user-info-mobile" style="color: var(--text-secondary);"></span>
         </div>
 
-        <!-- Авторизация (если не вошёл) -->
+        <!-- Авторизация -->
         <div id="auth-container" style="display: none;">
             <div class="card">
                 <h2><i class="fa-solid fa-lock"></i> Вход / Регистрация</h2>
@@ -183,7 +191,7 @@
             </div>
         </div>
 
-        <!-- Мой аккаунт (после входа) -->
+        <!-- Мой аккаунт -->
         <div id="section-my-account" class="section-panel">
             <div class="card">
                 <h2><i class="fa-solid fa-user"></i> Мой аккаунт</h2>
@@ -225,8 +233,27 @@
         <div id="section-admin" class="section-panel">
             <div class="card">
                 <h2><i class="fa-solid fa-user-shield"></i> Админ-панель</h2>
-                <p style="color: var(--text-secondary);">Повышение игроков до работников банка.</p>
-                <ul id="player-users" style="list-style: none; padding: 0;"></ul>
+                <div class="admin-tabs">
+                    <button class="admin-tab-btn active" data-admin-tab="users">Пользователи</button>
+                    <button class="admin-tab-btn" data-admin-tab="stats">Статистика</button>
+                </div>
+                <div id="admin-tab-users">
+                    <p style="color: var(--text-secondary); margin-bottom: 10px;">Список всех пользователей и управление ролями.</p>
+                    <table style="width:100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border); color: var(--gold);">
+                                <th style="text-align:left; padding: 8px;">Email</th>
+                                <th style="text-align:left; padding: 8px;">Ник</th>
+                                <th style="text-align:left; padding: 8px;">Роль</th>
+                                <th style="text-align:left; padding: 8px;">Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody id="all-users-list"></tbody>
+                    </table>
+                </div>
+                <div id="admin-tab-stats" style="display: none;">
+                    <div id="stats-content">Загрузка...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -273,7 +300,11 @@
 
             if (sectionId === 'my-docs') loadMyDocs();
             if (sectionId === 'my-account') loadAccountInfo();
-            if (sectionId === 'admin') loadAdminPlayerList();
+            if (sectionId === 'admin') {
+                // по умолчанию покажем вкладку users
+                switchAdminTab('users');
+                loadAllUsers();
+            }
         }
 
         document.querySelectorAll('.sidebar a').forEach(link => {
@@ -284,6 +315,20 @@
             });
         });
 
+        // Переключение вкладок внутри админ-панели
+        function switchAdminTab(tab) {
+            document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.admin-tab-btn[data-admin-tab="${tab}"]`).classList.add('active');
+            document.getElementById('admin-tab-users').style.display = tab === 'users' ? 'block' : 'none';
+            document.getElementById('admin-tab-stats').style.display = tab === 'stats' ? 'block' : 'none';
+            if (tab === 'users') loadAllUsers();
+            if (tab === 'stats') loadStats();
+        }
+
+        document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchAdminTab(btn.dataset.adminTab));
+        });
+
         async function updateUI() {
             const user = auth.currentUser;
             document.getElementById('auth-container').style.display = user ? 'none' : 'block';
@@ -292,7 +337,6 @@
             const menuAdmin = document.getElementById('menu-admin');
 
             if (!user) {
-                // Скрываем все личные пункты
                 if (menuAccount) menuAccount.style.display = 'none';
                 if (menuCreate) menuCreate.style.display = 'none';
                 if (menuAdmin) menuAdmin.style.display = 'none';
@@ -300,17 +344,14 @@
                 return;
             }
 
-            // Загружаем ник
             const nickSnap = await db.ref('users/' + user.uid + '/nickname').once('value');
             currentNickname = nickSnap.val() || '';
             document.getElementById('user-nickname').value = currentNickname;
 
-            // Пункт "Мой аккаунт" виден всем авторизованным
             if (menuAccount) menuAccount.style.display = 'flex';
             if (menuCreate) menuCreate.style.display = (currentUserRole === 'worker' || currentUserRole === 'admin') ? 'flex' : 'none';
             if (menuAdmin) menuAdmin.style.display = (currentUserRole === 'admin') ? 'flex' : 'none';
 
-            // Если текущая секция недоступна, переключаемся
             const activeSection = document.querySelector('.section-panel.active');
             if (activeSection) {
                 const id = activeSection.id.replace('section-', '');
@@ -352,7 +393,6 @@
             }
         });
 
-        // Авторизация
         async function register() {
             const email = document.getElementById('reg-email').value.trim();
             const password = document.getElementById('reg-password').value.trim();
@@ -390,7 +430,6 @@
             }
         }
 
-        // Никнейм
         async function saveNickname() {
             const nick = document.getElementById('user-nickname').value.trim();
             const msg = document.getElementById('nickname-message');
@@ -402,7 +441,6 @@
             } catch (e) { showMessage(msg, 'error', e.message); }
         }
 
-        // Документы
         async function loadMyDocs() {
             const container = document.getElementById('my-docs-content');
             if (!auth.currentUser) {
@@ -423,7 +461,14 @@
                 } else {
                     let html = '<ul class="my-docs-list">';
                     arr.forEach(doc => {
-                        html += `<li><span><strong>${doc.type}</strong> – ${doc.number}</span><span style="color:var(--text-secondary);">${doc.date}</span></li>`;
+                        const exp = doc.expirationDate ? new Date(doc.expirationDate) : null;
+                        const now = new Date();
+                        const valid = exp ? exp >= now : true;
+                        html += `<li>
+                            <span><strong>${doc.type}</strong> – ${doc.number}</span>
+                            <span style="color:var(--text-secondary);">${doc.date} ${exp ? '| до ' + exp.toLocaleDateString() : ''}</span>
+                            <span class="${valid ? 'valid' : 'expired'}">${valid ? 'Действителен' : 'Просрочен'}</span>
+                        </li>`;
                     });
                     html += '</ul>';
                     container.innerHTML = html;
@@ -440,6 +485,9 @@
                 const docs = snap.val();
                 if (!docs) { resultDiv.innerHTML = '<div class="alert alert-error">Документ не найден.</div>'; return; }
                 const doc = Object.values(docs)[0];
+                const exp = doc.expirationDate ? new Date(doc.expirationDate) : null;
+                const now = new Date();
+                const valid = exp ? exp >= now : true;
                 resultDiv.innerHTML = `
                     <div class="document-view">
                         <h3><i class="fa-solid fa-file-lines"></i> ${doc.type}</h3>
@@ -447,6 +495,8 @@
                         <p><span>Игрок:</span> ${doc.player}</p>
                         <p><span>Дата выдачи:</span> ${doc.date}</p>
                         <p><span>Кем выдан:</span> ${doc.issuedBy}</p>
+                        ${exp ? `<p><span>Срок действия:</span> до ${exp.toLocaleDateString()}</p>` : ''}
+                        <p class="${valid ? 'valid' : 'expired'}"><strong>${valid ? 'Документ действителен' : 'Документ просрочен'}</strong></p>
                     </div>`;
             } catch (e) { resultDiv.innerHTML = `<div class="alert alert-error">Ошибка: ${e.message}</div>`; }
         }
@@ -461,9 +511,14 @@
             const msg = document.getElementById('create-message');
             if (!player || !date) { showMessage(msg, 'error', 'Заполните ник и дату.'); return; }
             const number = generateDocNumber();
+            // Вычисляем дату истечения: +1 год
+            const issueDate = new Date(date);
+            const expirationDate = new Date(issueDate);
+            expirationDate.setFullYear(expirationDate.getFullYear() + 1);
             try {
                 await db.ref('documents').push({
                     number, type, player, date,
+                    expirationDate: expirationDate.toISOString(),
                     issuedBy: auth.currentUser.email,
                     timestamp: firebase.database.ServerValue.TIMESTAMP
                 });
@@ -480,40 +535,81 @@
             return result;
         }
 
-        // Админка
-        async function loadAdminPlayerList() {
-            const list = document.getElementById('player-users');
-            if (!auth.currentUser || currentUserRole !== 'admin') {
-                list.innerHTML = '<li>Нет доступа.</li>'; return;
-            }
-            list.innerHTML = '';
+        // Админ-панель: загрузка всех пользователей
+        async function loadAllUsers() {
+            const tbody = document.getElementById('all-users-list');
+            tbody.innerHTML = '<tr><td colspan="4">Загрузка...</td></tr>';
             try {
                 const snap = await db.ref('users').once('value');
                 const users = snap.val() || {};
-                let hasPlayers = false;
+                const rows = [];
                 for (const [uid, u] of Object.entries(users)) {
-                    if (u.role === 'player') {
-                        hasPlayers = true;
-                        const li = document.createElement('li');
-                        li.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border);';
-                        li.innerHTML = `<span>${u.email} (${u.nickname || 'без ника'})</span> <button class="btn" onclick="promoteToWorker('${uid}')"><i class="fa-solid fa-arrow-up"></i> Сделать работником</button>`;
-                        list.appendChild(li);
-                    }
+                    const role = u.role || 'player';
+                    rows.push({ uid, email: u.email, nickname: u.nickname || '-', role });
                 }
-                if (!hasPlayers) list.innerHTML = '<li>Нет игроков.</li>';
-            } catch (e) { console.error(e); }
+                if (rows.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4">Нет пользователей.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = rows.map(r => `
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px;">${r.email}</td>
+                        <td style="padding: 8px;">${r.nickname}</td>
+                        <td style="padding: 8px;">
+                            <select onchange="changeUserRole('${r.uid}', this.value)" data-original="${r.role}">
+                                <option value="player" ${r.role === 'player' ? 'selected' : ''}>Игрок</option>
+                                <option value="worker" ${r.role === 'worker' ? 'selected' : ''}>Работник банка</option>
+                                <option value="admin" ${r.role === 'admin' ? 'selected' : ''}>Администратор</option>
+                            </select>
+                        </td>
+                        <td style="padding: 8px;">
+                            <button class="btn" onclick="changeUserRole('${r.uid}', document.querySelector(\`select[data-original='${r.role}']\`).value)">Сохранить</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="4">Ошибка: ${e.message}</td></tr>`;
+            }
         }
 
-        async function promoteToWorker(uid) {
+        async function changeUserRole(uid, newRole) {
             try {
-                await db.ref('roles/' + uid).set('worker');
-                await db.ref('users/' + uid + '/role').set('worker');
-                loadAdminPlayerList();
-                if (auth.currentUser.uid === uid) {
-                    currentUserRole = 'worker';
-                    updateUI();
+                await db.ref('roles/' + uid).set(newRole);
+                await db.ref('users/' + uid + '/role').set(newRole);
+                alert('Роль обновлена.');
+                loadAllUsers();
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        // Статистика
+        async function loadStats() {
+            const container = document.getElementById('stats-content');
+            container.innerHTML = 'Загрузка...';
+            try {
+                const [usersSnap, docsSnap] = await Promise.all([
+                    db.ref('users').once('value'),
+                    db.ref('documents').once('value')
+                ]);
+                const users = usersSnap.val() || {};
+                const docs = docsSnap.val() || {};
+                let playerCount = 0, workerCount = 0, adminCount = 0;
+                for (const u of Object.values(users)) {
+                    if (u.role === 'player') playerCount++;
+                    else if (u.role === 'worker') workerCount++;
+                    else if (u.role === 'admin') adminCount++;
                 }
-            } catch (e) { alert(e.message); }
+                const totalDocs = Object.keys(docs).length;
+                container.innerHTML = `
+                    <p>👥 Игроков: <strong>${playerCount}</strong></p>
+                    <p>🏦 Работников банка: <strong>${workerCount}</strong></p>
+                    <p>🛡️ Администраторов: <strong>${adminCount}</strong></p>
+                    <p>📄 Всего документов: <strong>${totalDocs}</strong></p>
+                `;
+            } catch (e) {
+                container.innerHTML = `<div class="alert alert-error">Ошибка: ${e.message}</div>`;
+            }
         }
 
         function showMessage(el, type, text) {
@@ -525,7 +621,6 @@
 
         function logout() { auth.signOut(); }
 
-        // Старт
         switchSection('check-doc');
     </script>
 </body>
