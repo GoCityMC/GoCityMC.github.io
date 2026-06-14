@@ -17,23 +17,14 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; min-height: 100vh; }
-        /* Sidebar */
         .sidebar {
-            width: var(--sidebar-width);
-            background: var(--surface);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            padding: 20px 0;
-            position: fixed;
-            top: 0; left: 0; bottom: 0;
-            z-index: 200;
-            transition: transform 0.3s ease;
+            width: var(--sidebar-width); background: var(--surface); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; padding: 20px 0;
+            position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; transition: transform 0.3s ease;
         }
         .sidebar .logo {
             font-size: 1.5rem; font-weight: 700; color: var(--gold);
-            padding: 0 20px 20px; border-bottom: 1px solid var(--border);
-            margin-bottom: 20px;
+            padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px;
         }
         .sidebar nav { flex: 1; }
         .sidebar a {
@@ -42,38 +33,25 @@
             font-weight: 500; transition: var(--transition);
         }
         .sidebar a i { width: 20px; text-align: center; }
-        .sidebar a:hover, .sidebar a.active {
-            background: var(--card); color: #fff;
-        }
+        .sidebar a:hover, .sidebar a.active { background: var(--card); color: #fff; }
         .sidebar .logout-btn {
-            padding: 12px 20px;
-            margin: 20px;
-            background: var(--card); border: 1px solid var(--border);
-            border-radius: 6px; color: #ff8d8d; cursor: pointer;
-            text-align: center; transition: var(--transition);
+            padding: 12px 20px; margin: 20px; background: var(--card);
+            border: 1px solid var(--border); border-radius: 6px; color: #ff8d8d;
+            cursor: pointer; text-align: center; transition: var(--transition);
         }
         .sidebar .logout-btn:hover { background: #3a1a1a; }
 
-        /* Main content */
         .main {
-            margin-left: var(--sidebar-width);
-            flex: 1;
-            padding: 30px;
-            transition: margin 0.3s ease;
+            margin-left: var(--sidebar-width); flex: 1; padding: 30px; transition: margin 0.3s ease;
         }
         .top-bar {
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
+            display: none; align-items: center; justify-content: space-between; margin-bottom: 20px;
         }
         .menu-toggle {
-            background: var(--card); border: 1px solid var(--border);
-            color: #fff; padding: 10px; border-radius: 6px;
-            cursor: pointer; font-size: 1.2rem;
+            background: var(--card); border: 1px solid var(--border); color: #fff;
+            padding: 10px; border-radius: 6px; cursor: pointer; font-size: 1.2rem;
         }
 
-        /* Content panels */
         .section-panel { display: none; }
         .section-panel.active { display: block; }
         .card {
@@ -126,29 +104,27 @@
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="logo"><i class="fa-solid fa-city"></i> GoCity</div>
         <nav>
-            <!-- Пункт всегда виден: публичная проверка -->
             <a href="#" data-section="check-doc" class="active"><i class="fa-solid fa-magnifying-glass"></i> Проверка документа</a>
             <a href="#" data-section="my-docs"><i class="fa-solid fa-file-lines"></i> Мои документы</a>
             <a href="#" data-section="my-businesses"><i class="fa-solid fa-building"></i> Мои бизнесы</a>
             <a href="#" data-section="my-job"><i class="fa-solid fa-briefcase"></i> Моя работа</a>
+            <a href="#" data-section="my-account" id="menu-account" style="display: none;"><i class="fa-solid fa-user"></i> Мой аккаунт</a>
             <a href="#" data-section="create-doc" id="menu-create-doc" style="display: none;"><i class="fa-solid fa-file-circle-plus"></i> Создать документ</a>
             <a href="#" data-section="admin" id="menu-admin" style="display: none;"><i class="fa-solid fa-user-shield"></i> Админ-панель</a>
         </nav>
         <div class="logout-btn" onclick="logout()"><i class="fa-solid fa-sign-out-alt"></i> Выйти</div>
     </aside>
 
-    <!-- Main Content -->
     <div class="main" id="main-content">
         <div class="top-bar">
             <button class="menu-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
             <span id="user-info-mobile" style="color: var(--text-secondary);"></span>
         </div>
 
-        <!-- Блок авторизации (скрыт, если авторизован) -->
+        <!-- Авторизация (если не вошёл) -->
         <div id="auth-container" style="display: none;">
             <div class="card">
                 <h2><i class="fa-solid fa-lock"></i> Вход / Регистрация</h2>
@@ -172,38 +148,25 @@
             </div>
         </div>
 
-        <!-- Панель после входа -->
-        <div id="dashboard" style="display: none;">
-            <!-- Привязка ника (если авторизован) -->
-            <div class="card" id="nickname-card">
-                <label>Ваш игровой ник</label>
-                <div style="display: flex; gap: 10px; align-items: end;">
-                    <input type="text" id="user-nickname" placeholder="Введите ник" style="flex:2;">
-                    <button class="btn" onclick="saveNickname()">Сохранить</button>
-                </div>
-                <div id="nickname-message" class="alert" style="display: none;"></div>
-            </div>
-        </div>
-
-        <!-- Секции контента (доступны всем, но контент зависит от авторизации) -->
         <!-- Проверка документа (публичная) -->
         <div id="section-check-doc" class="section-panel active">
             <div class="card">
                 <h2><i class="fa-solid fa-magnifying-glass"></i> Проверка документа</h2>
-                <p style="color: var(--text-secondary);">Введите номер документа, чтобы увидеть его данные.</p>
+                <p style="color: var(--text-secondary);">Введите номер, чтобы увидеть данные документа.</p>
                 <input type="text" id="search-number" placeholder="Номер документа (10 символов)">
                 <button class="btn" onclick="searchDocument()"><i class="fa-solid fa-search"></i> Найти</button>
                 <div id="search-result"></div>
             </div>
         </div>
 
-        <!-- Мои документы (после входа) -->
+        <!-- Мои документы -->
         <div id="section-my-docs" class="section-panel">
             <div class="card">
                 <h2><i class="fa-solid fa-file-lines"></i> Мои документы</h2>
                 <div id="my-docs-content">Сначала войдите в аккаунт.</div>
             </div>
         </div>
+
         <!-- Мои бизнесы -->
         <div id="section-my-businesses" class="section-panel">
             <div class="card">
@@ -211,6 +174,7 @@
                 <p style="color: var(--text-secondary);">Раздел в разработке. Здесь будут ваши компании.</p>
             </div>
         </div>
+
         <!-- Моя работа -->
         <div id="section-my-job" class="section-panel">
             <div class="card">
@@ -218,6 +182,24 @@
                 <p style="color: var(--text-secondary);">Раздел в разработке. Здесь будет информация о должности.</p>
             </div>
         </div>
+
+        <!-- Мой аккаунт (после входа) -->
+        <div id="section-my-account" class="section-panel">
+            <div class="card">
+                <h2><i class="fa-solid fa-user"></i> Мой аккаунт</h2>
+                <p><strong>Email:</strong> <span id="account-email"></span></p>
+                <p><strong>Роль:</strong> <span id="account-role"></span></p>
+                <div style="margin-top: 20px;">
+                    <label>Игровой ник</label>
+                    <div style="display: flex; gap: 10px; align-items: end;">
+                        <input type="text" id="user-nickname" placeholder="Введите ник" style="flex:2;">
+                        <button class="btn" onclick="saveNickname()">Сохранить</button>
+                    </div>
+                    <div id="nickname-message" class="alert" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
         <!-- Создать документ (worker/admin) -->
         <div id="section-create-doc" class="section-panel">
             <div class="card">
@@ -238,6 +220,7 @@
                 <div id="create-message" class="alert" style="display: none;"></div>
             </div>
         </div>
+
         <!-- Админ-панель -->
         <div id="section-admin" class="section-panel">
             <div class="card">
@@ -265,7 +248,6 @@
         let currentUserRole = null;
         let currentNickname = null;
 
-        // UI переключение форм входа/регистрации
         function showLogin() {
             document.getElementById('login-form').style.display = 'block';
             document.getElementById('register-form').style.display = 'none';
@@ -276,12 +258,10 @@
             document.getElementById('register-form').style.display = 'block';
             document.getElementById('auth-message').style.display = 'none';
         }
-
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('open');
         }
 
-        // Переключение секций
         function switchSection(sectionId) {
             document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
             const target = document.getElementById('section-' + sectionId);
@@ -289,12 +269,10 @@
             document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
             const link = document.querySelector(`.sidebar a[data-section="${sectionId}"]`);
             if (link) link.classList.add('active');
-            if (window.innerWidth < 768) {
-                document.getElementById('sidebar').classList.remove('open');
-            }
+            if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
 
-            // Обновить контент в зависимости от раздела
             if (sectionId === 'my-docs') loadMyDocs();
+            if (sectionId === 'my-account') loadAccountInfo();
             if (sectionId === 'admin') loadAdminPlayerList();
         }
 
@@ -306,43 +284,33 @@
             });
         });
 
-        // Обновление глобального UI
         async function updateUI() {
             const user = auth.currentUser;
-            // Показываем/скрываем элементы
             document.getElementById('auth-container').style.display = user ? 'none' : 'block';
-            document.getElementById('dashboard').style.display = user ? 'block' : 'none';
-            const nicknameCard = document.getElementById('nickname-card');
-            if (user) {
-                nicknameCard.style.display = 'block';
-                // Загружаем ник
-                const nickSnap = await db.ref('users/' + user.uid + '/nickname').once('value');
-                currentNickname = nickSnap.val() || '';
-                document.getElementById('user-nickname').value = currentNickname;
-            } else {
-                nicknameCard.style.display = 'none';
-                // Если не авторизован, скрываем элементы меню для ролей
-                document.getElementById('menu-create-doc').style.display = 'none';
-                document.getElementById('menu-admin').style.display = 'none';
-                // По умолчанию активен раздел проверки
+            const menuAccount = document.getElementById('menu-account');
+            const menuCreate = document.getElementById('menu-create-doc');
+            const menuAdmin = document.getElementById('menu-admin');
+
+            if (!user) {
+                // Скрываем все личные пункты
+                if (menuAccount) menuAccount.style.display = 'none';
+                if (menuCreate) menuCreate.style.display = 'none';
+                if (menuAdmin) menuAdmin.style.display = 'none';
                 switchSection('check-doc');
                 return;
             }
 
-            // Роль и доступные пункты меню
-            const menuCreate = document.getElementById('menu-create-doc');
-            const menuAdmin = document.getElementById('menu-admin');
-            if (currentUserRole === 'worker' || currentUserRole === 'admin') {
-                menuCreate.style.display = 'flex';
-            } else {
-                menuCreate.style.display = 'none';
-            }
-            if (currentUserRole === 'admin') {
-                menuAdmin.style.display = 'flex';
-            } else {
-                menuAdmin.style.display = 'none';
-            }
-            // Если текущая секция недоступна (например, админка для не-админа), переключимся
+            // Загружаем ник
+            const nickSnap = await db.ref('users/' + user.uid + '/nickname').once('value');
+            currentNickname = nickSnap.val() || '';
+            document.getElementById('user-nickname').value = currentNickname;
+
+            // Пункт "Мой аккаунт" виден всем авторизованным
+            if (menuAccount) menuAccount.style.display = 'flex';
+            if (menuCreate) menuCreate.style.display = (currentUserRole === 'worker' || currentUserRole === 'admin') ? 'flex' : 'none';
+            if (menuAdmin) menuAdmin.style.display = (currentUserRole === 'admin') ? 'flex' : 'none';
+
+            // Если текущая секция недоступна, переключаемся
             const activeSection = document.querySelector('.section-panel.active');
             if (activeSection) {
                 const id = activeSection.id.replace('section-', '');
@@ -352,6 +320,14 @@
                     switchSection('my-docs');
                 }
             }
+        }
+
+        function loadAccountInfo() {
+            if (!auth.currentUser) return;
+            document.getElementById('account-email').textContent = auth.currentUser.email;
+            const roleMap = { player: 'Игрок', worker: 'Работник банка', admin: 'Администратор' };
+            document.getElementById('account-role').textContent = roleMap[currentUserRole] || 'Неизвестно';
+            document.getElementById('user-nickname').value = currentNickname || '';
         }
 
         async function loadUserRole(uid) {
@@ -376,7 +352,7 @@
             }
         });
 
-        // Регистрация
+        // Авторизация
         async function register() {
             const email = document.getElementById('reg-email').value.trim();
             const password = document.getElementById('reg-password').value.trim();
@@ -389,8 +365,6 @@
                 showMessage(msg, 'success', 'Регистрация успешна!');
             } catch (e) { showMessage(msg, 'error', e.message); }
         }
-
-        // Вход email
         async function login() {
             const email = document.getElementById('login-email').value.trim();
             const pass = document.getElementById('login-password').value.trim();
@@ -401,8 +375,6 @@
                 showMessage(msg, 'none');
             } catch (e) { showMessage(msg, 'error', e.message); }
         }
-
-        // Google вход
         async function loginWithGoogle() {
             const provider = new firebase.auth.GoogleAuthProvider();
             try {
@@ -418,7 +390,7 @@
             }
         }
 
-        // Сохранение ника
+        // Никнейм
         async function saveNickname() {
             const nick = document.getElementById('user-nickname').value.trim();
             const msg = document.getElementById('nickname-message');
@@ -427,13 +399,10 @@
                 await db.ref('users/' + auth.currentUser.uid + '/nickname').set(nick);
                 currentNickname = nick;
                 showMessage(msg, 'success', 'Ник сохранён!');
-                if (document.getElementById('section-my-docs').classList.contains('active')) {
-                    loadMyDocs();
-                }
             } catch (e) { showMessage(msg, 'error', e.message); }
         }
 
-        // Мои документы
+        // Документы
         async function loadMyDocs() {
             const container = document.getElementById('my-docs-content');
             if (!auth.currentUser) {
@@ -441,7 +410,7 @@
                 return;
             }
             if (!currentNickname) {
-                container.innerHTML = '<p style="color: var(--text-secondary);">Сохраните ник, чтобы увидеть документы.</p>';
+                container.innerHTML = '<p style="color: var(--text-secondary);">Привяжите ник во вкладке «Мой аккаунт», чтобы видеть документы.</p>';
                 return;
             }
             container.innerHTML = 'Загрузка...';
@@ -462,12 +431,60 @@
             } catch (e) { container.innerHTML = `<div class="alert alert-error">Ошибка: ${e.message}</div>`; }
         }
 
-        // Админ список
+        async function searchDocument() {
+            const number = document.getElementById('search-number').value.trim();
+            const resultDiv = document.getElementById('search-result');
+            if (!number) { resultDiv.innerHTML = '<div class="alert alert-error">Введите номер.</div>'; return; }
+            try {
+                const snap = await db.ref('documents').orderByChild('number').equalTo(number).once('value');
+                const docs = snap.val();
+                if (!docs) { resultDiv.innerHTML = '<div class="alert alert-error">Документ не найден.</div>'; return; }
+                const doc = Object.values(docs)[0];
+                resultDiv.innerHTML = `
+                    <div class="document-view">
+                        <h3><i class="fa-solid fa-file-lines"></i> ${doc.type}</h3>
+                        <p><span>Номер:</span> ${doc.number}</p>
+                        <p><span>Игрок:</span> ${doc.player}</p>
+                        <p><span>Дата выдачи:</span> ${doc.date}</p>
+                        <p><span>Кем выдан:</span> ${doc.issuedBy}</p>
+                    </div>`;
+            } catch (e) { resultDiv.innerHTML = `<div class="alert alert-error">Ошибка: ${e.message}</div>`; }
+        }
+
+        async function createDocument() {
+            if (!auth.currentUser || (currentUserRole !== 'worker' && currentUserRole !== 'admin')) {
+                alert('Нет прав.'); return;
+            }
+            const type = document.getElementById('doc-type').value;
+            const player = document.getElementById('player-nick').value.trim();
+            const date = document.getElementById('doc-date').value;
+            const msg = document.getElementById('create-message');
+            if (!player || !date) { showMessage(msg, 'error', 'Заполните ник и дату.'); return; }
+            const number = generateDocNumber();
+            try {
+                await db.ref('documents').push({
+                    number, type, player, date,
+                    issuedBy: auth.currentUser.email,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                showMessage(msg, 'success', `✅ Документ создан! Номер: <strong>${number}</strong>`);
+                document.getElementById('player-nick').value = '';
+                document.getElementById('doc-date').value = '';
+            } catch (e) { showMessage(msg, 'error', e.message); }
+        }
+
+        function generateDocNumber() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < 10; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+            return result;
+        }
+
+        // Админка
         async function loadAdminPlayerList() {
             const list = document.getElementById('player-users');
             if (!auth.currentUser || currentUserRole !== 'admin') {
-                list.innerHTML = '<li>Нет доступа.</li>';
-                return;
+                list.innerHTML = '<li>Нет доступа.</li>'; return;
             }
             list.innerHTML = '';
             try {
@@ -499,66 +516,6 @@
             } catch (e) { alert(e.message); }
         }
 
-        // Создать документ
-        async function createDocument() {
-            if (!auth.currentUser || (currentUserRole !== 'worker' && currentUserRole !== 'admin')) {
-                alert('Нет прав.');
-                return;
-            }
-            const type = document.getElementById('doc-type').value;
-            const player = document.getElementById('player-nick').value.trim();
-            const date = document.getElementById('doc-date').value;
-            const msg = document.getElementById('create-message');
-            if (!player || !date) { showMessage(msg, 'error', 'Заполните ник и дату.'); return; }
-            const number = generateDocNumber();
-            try {
-                await db.ref('documents').push({
-                    number, type, player, date,
-                    issuedBy: auth.currentUser.email,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                });
-                showMessage(msg, 'success', `✅ Документ создан! Номер: <strong>${number}</strong>`);
-                document.getElementById('player-nick').value = '';
-                document.getElementById('doc-date').value = '';
-            } catch (e) { showMessage(msg, 'error', e.message); }
-        }
-
-        // Проверка документа (публичная)
-        async function searchDocument() {
-            const number = document.getElementById('search-number').value.trim();
-            const resultDiv = document.getElementById('search-result');
-            if (!number) {
-                resultDiv.innerHTML = '<div class="alert alert-error">Введите номер.</div>';
-                return;
-            }
-            try {
-                const snap = await db.ref('documents').orderByChild('number').equalTo(number).once('value');
-                const docs = snap.val();
-                if (!docs) {
-                    resultDiv.innerHTML = '<div class="alert alert-error">Документ не найден.</div>';
-                    return;
-                }
-                const doc = Object.values(docs)[0];
-                resultDiv.innerHTML = `
-                    <div class="document-view">
-                        <h3><i class="fa-solid fa-file-lines"></i> ${doc.type}</h3>
-                        <p><span>Номер:</span> ${doc.number}</p>
-                        <p><span>Игрок:</span> ${doc.player}</p>
-                        <p><span>Дата выдачи:</span> ${doc.date}</p>
-                        <p><span>Кем выдан:</span> ${doc.issuedBy}</p>
-                    </div>`;
-            } catch (e) {
-                resultDiv.innerHTML = `<div class="alert alert-error">Ошибка: ${e.message}</div>`;
-            }
-        }
-
-        function generateDocNumber() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            let result = '';
-            for (let i = 0; i < 10; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-            return result;
-        }
-
         function showMessage(el, type, text) {
             if (type === 'none') { el.style.display = 'none'; return; }
             el.style.display = 'block';
@@ -568,7 +525,7 @@
 
         function logout() { auth.signOut(); }
 
-        // Инициализация: показываем проверку документа сразу
+        // Старт
         switchSection('check-doc');
     </script>
 </body>
