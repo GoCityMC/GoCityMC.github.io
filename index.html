@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏙️ GoCity — Главная</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --card: #181825;
+            --border: #252535;
+            --gold: #c9a96e;
+            --gold-hover: #d4b87a;
+            --text: #d0d0d8;
+            --text-secondary: #90909e;
+            --radius: 10px;
+            --transition: 0.25s ease;
+            --font: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            line-height: 1.6;
+            min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse at 50% 0%, rgba(201, 169, 110, 0.04) 0%, transparent 70%),
+                radial-gradient(ellipse at 80% 100%, rgba(91, 155, 213, 0.03) 0%, transparent 60%);
+        }
+        .navbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            background: rgba(18, 18, 26, 0.85);
+        }
+        .navbar .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .navbar .logo span {
+            color: var(--gold);
+            margin-left: -0.12em;
+        }
+        .navbar .logo i {
+            font-size: 2rem;
+            color: var(--gold);
+        }
+        .nav-links {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            list-style: none;
+        }
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: var(--transition);
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        .nav-links a:hover { color: #fff; background: var(--card); }
+        .nav-links a.accent { background: var(--gold); color: #1a1a1a; font-weight: 600; }
+        .nav-links a.accent:hover { background: var(--gold-hover); color: #000; }
+        .hero {
+            text-align: center;
+            padding: 80px 24px 60px;
+        }
+        .hero h1 {
+            font-size: clamp(2.2rem, 5vw, 3.6rem);
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+        .hero h1 .gold { color: var(--gold); }
+        .hero .subtitle {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 28px;
+        }
+        .hero .badge-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 32px;
+        }
+        .badge {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge i { color: var(--gold); }
+        .hero-buttons {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 13px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: var(--transition);
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary { background: var(--gold); color: #1a1a1a; }
+        .btn-primary:hover { background: var(--gold-hover); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(201, 169, 110, 0.25); }
+        .btn-outline { background: transparent; border: 2px solid var(--border); color: #fff; }
+        .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+        .section { max-width: 1000px; margin: 0 auto; padding: 50px 24px; }
+        .section h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section h2 .line { flex: 1; height: 1px; background: var(--border); }
+        .section .section-desc { color: var(--text-secondary); margin-bottom: 28px; font-size: 1rem; }
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 18px;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            transition: var(--transition);
+        }
+        .card:hover { border-color: #3a3a50; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .card i { font-size: 2rem; margin-bottom: 12px; color: var(--gold); }
+        .card h3 { color: #fff; font-size: 1.15rem; margin-bottom: 6px; }
+        .card p { color: var(--text-secondary); font-size: 0.9rem; }
+        #rules-content { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-top: 20px; color: var(--text); }
+        #rules-content h2, #rules-content h3 { color: #fff; margin-top: 1rem; }
+        #rules-content ul, #rules-content ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+        footer {
+            text-align: center;
+            padding: 30px 24px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+        }
+        footer a { color: var(--gold); text-decoration: none; }
+        @media (max-width: 600px) {
+            .navbar { padding: 12px 16px; }
+            .nav-links a { padding: 6px 10px; font-size: 0.85rem; }
+            .hero { padding: 50px 16px 36px; }
+            .section { padding: 32px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <i class="fa-solid fa-city"></i>
+            Go<span>City</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#about">О сервере</a></li>
+            <li><a href="#rules">Правила</a></li>
+            <li><a href="#docs">Документы</a></li>
+            <li><a href="documents.html" class="accent"><i class="fa-solid fa-file-lines"></i> Система документов</a></li>
+        </ul>
+    </nav>
+
+    <section class="hero">
+        <h1>Добро пожаловать на <span class="gold">GoCity</span></h1>
+        <p class="subtitle">RolePlay сервер с уникальной системой государственных документов, экономикой и глубокими механиками.</p>
+        <div class="badge-row">
+            <span class="badge"><i class="fa-solid fa-server"></i> Сервер онлайн</span>
+            <span class="badge"><i class="fa-solid fa-id-card"></i> Уникальная система док-ов</span>
+        </div>
+        <div class="hero-buttons">
+            <a href="#" class="btn btn-primary"><i class="fa-solid fa-gamepad"></i> Подключиться</a>
+            <a href="documents.html" class="btn btn-outline"><i class="fa-solid fa-file-lines"></i> Система документов</a>
+        </div>
+    </section>
+
+    <section class="section" id="about">
+        <h2><i class="fa-solid fa-circle-info"></i> О сервере <span class="line"></span></h2>
+        <p class="section-desc">GoCity — это город возможностей. Устройся на работу, получи документы, построй карьеру или создай свой бизнес.</p>
+        <div class="cards-grid">
+            <div class="card">
+                <i class="fa-solid fa-building-columns"></i>
+                <h3>Государственный банк</h3>
+                <p>Банк выполняет функции финансового учреждения и правительственного здания. Здесь вы можете оформить официальные документы, кредиты и счета.</p>
+            </div>
+            <div class="card">
+                <i class="fa-solid fa-id-card"></i>
+                <h3>Система документов</h3>
+                <p>Уникальная веб-система для создания и проверки документов. Работники банка выдают справки, лицензии, удостоверения.</p>
+            </div>
+            <div class="card">
+                <i class="fa-solid fa-coins"></i>
+                <h3>Реальная экономика</h3>
+                <p>Работай, зарабатывай, трать. Медсправки, лицензии — всё требует оформления через банк.</p>
+            </div>
+            <div class="card">
+                <i class="fa-solid fa-shield-halved"></i>
+                <h3>Госструктуры</h3>
+                <p>Полиция, медики, правительство — все взаимодействуют через единую систему документооборота.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="rules">
+        <h2><i class="fa-solid fa-gavel"></i> Правила сервера <span class="line"></span></h2>
+        <div id="rules-content">
+            <p>Загрузка правил...</p>
+        </div>
+    </section>
+
+    <section class="section" id="docs">
+        <h2><i class="fa-solid fa-file-lines"></i> Система документов <span class="line"></span></h2>
+        <p class="section-desc">Работники банка выдают документы игрокам через специальную панель. Любой может проверить подлинность документа по его номеру.</p>
+        <div class="cards-grid">
+            <div class="card">
+                <i class="fa-solid fa-id-card"></i>
+                <h3>Удостоверение личности</h3>
+                <p>Основной документ гражданина.</p>
+            </div>
+            <div class="card">
+                <i class="fa-solid fa-briefcase-medical"></i>
+                <h3>Справка о работоспособности</h3>
+                <p>Трудоустройство.</p>
+            </div>
+            <div class="card">
+                <i class="fa-solid fa-gun"></i>
+                <h3>Лицензия на оружие</h3>
+                <p>Разрешение на ношение.</p>
+            </div>
+            <div class="card">
+                <i class="fa-solid fa-house"></i>
+                <h3>Собственность</h3>
+                <p>Владение недвижимостью/ТС.</p>
+            </div>
+            <div class="card">
+                <i class="fa-solid fa-ring"></i>
+                <h3>Свидетельство о браке</h3>
+                <p>Скоро...</p>
+            </div>
+        </div>
+        <div style="text-align:center; margin-top:30px;">
+            <a href="documents.html" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Перейти к системе документов</a>
+        </div>
+    </section>
+
+    <footer>
+        <p>© 2024 <a href="#">GoCity RP</a>. Все права защищены. | Система документов v1.0 | <a href="documents.html">Панель документов</a></p>
+    </footer>
+
+    <script>
+        fetch('rules.md')
+            .then(response => {
+                if (!response.ok) throw new Error('Файл не найден');
+                return response.text();
+            })
+            .then(md => {
+                document.getElementById('rules-content').innerHTML = marked.parse(md);
+            })
+            .catch(() => {
+                document.getElementById('rules-content').innerHTML = '<p>⚠️ Файл <code>rules.md</code> не найден. Создайте его в корне репозитория, и правила появятся здесь.</p>';
+            });
+    </script>
+</body>
+</html>
