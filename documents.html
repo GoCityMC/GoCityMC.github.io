@@ -31,7 +31,7 @@
             min-height: 100vh;
             padding: 20px;
         }
-        .container { max-width: 800px; margin: 0 auto; }
+        .container { max-width: 900px; margin: 0 auto; }
         h1, h2 { color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
         h1 i, h2 i { color: var(--gold); }
         .card {
@@ -54,7 +54,7 @@
             align-items: center;
             gap: 8px;
             font-size: 0.95rem;
-            margin: 4px 0;
+            margin: 4px 4px 4px 0;
         }
         .btn:hover { background: var(--gold-hover); }
         .btn-outline {
@@ -69,6 +69,27 @@
             border: none;
         }
         .btn-google:hover { background: #f0f0f0; }
+        .btn-tab {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            padding: 10px 20px;
+            margin: 4px 4px 4px 0;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.95rem;
+        }
+        .btn-tab.active {
+            background: var(--gold);
+            color: #1a1a1a;
+            border-color: var(--gold);
+        }
+        .btn-tab:hover:not(.active) {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
         input, select, textarea {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -128,6 +149,20 @@
         }
         .google-separator::before { margin-right: 10px; }
         .google-separator::after { margin-left: 10px; }
+        .my-docs-list, .my-businesses-list, .my-jobs-list {
+            list-style: none;
+            padding: 0;
+        }
+        .my-docs-list li, .my-businesses-list li, .my-jobs-list li {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .section-content {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -136,9 +171,9 @@
 
         <!-- Авторизация -->
         <div class="card" id="auth-section">
-            <h2><i class="fa-solid fa-lock"></i> Доступ работника</h2>
+            <h2><i class="fa-solid fa-lock"></i> Доступ</h2>
             <p style="color: var(--text-secondary); margin-bottom: 12px;">
-                Сотрудники банка входят по email или через Google. Новые регистрируются и ожидают одобрения администратора.
+                Сотрудники банка и игроки — регистрируйтесь и входите удобным способом.
             </p>
 
             <div id="auth-forms">
@@ -178,32 +213,49 @@
                 <div id="auth-message" class="alert" style="display: none;"></div>
             </div>
 
+            <!-- Панель пользователя (показывается после входа) -->
             <div id="user-panel" style="display: none;">
                 <p>
                     Вы вошли как <strong id="current-user"></strong>
-                    <span id="approved-badge" style="color: var(--gold); display: none;"> (доступ разрешён)</span>
+                    <span id="role-badge" style="color: var(--gold);"></span>
                 </p>
-                <!-- Место для привязки ника (в будущем) -->
-                <div id="nickname-area" style="display: none; margin: 12px 0;">
+
+                <!-- Привязка ника (для всех) -->
+                <div id="nickname-area" style="margin: 16px 0;">
                     <label>Ваш игровой ник</label>
-                    <input type="text" id="user-nickname" placeholder="Например, Ivan_Kotov" disabled>
-                    <button class="btn" onclick="saveNickname()" style="display:none;">Сохранить</button>
+                    <div class="row" style="align-items: end;">
+                        <input type="text" id="user-nickname" placeholder="Введите ник, например Ivan_Kotov" style="flex: 2;">
+                        <button class="btn" onclick="saveNickname()"><i class="fa-solid fa-check"></i> Сохранить</button>
+                    </div>
+                    <div id="nickname-message" class="alert" style="display: none;"></div>
                 </div>
-                <button class="btn btn-outline" onclick="logout()"><i class="fa-solid fa-sign-out-alt"></i> Выйти</button>
+
+                <!-- Разделы панели (вкладки) -->
+                <div id="tabs" style="margin: 20px 0 10px;">
+                    <button class="btn-tab active" data-tab="my-docs">📄 Мои документы</button>
+                    <button class="btn-tab" data-tab="my-businesses">🏢 Мои бизнесы</button>
+                    <button class="btn-tab" data-tab="my-job">💼 Моя работа</button>
+                    <button class="btn-tab" id="tab-create-doc" data-tab="create-doc" style="display: none;">➕ Создать документ</button>
+                </div>
+
+                <!-- Контент выбранного раздела -->
+                <div id="section-content" class="section-content"></div>
+
+                <button class="btn btn-outline" onclick="logout()" style="margin-top: 20px;"><i class="fa-solid fa-sign-out-alt"></i> Выйти</button>
             </div>
         </div>
 
         <!-- Админ-панель -->
         <div class="card" id="admin-section" style="display: none;">
             <h2><i class="fa-solid fa-user-shield"></i> Админ-панель</h2>
-            <p style="color: var(--text-secondary);">Одобрение новых сотрудников. Только для администраторов.</p>
+            <p style="color: var(--text-secondary);">Назначение сотрудников банка.</p>
             <div id="admin-controls">
-                <h3>Список заявок</h3>
-                <ul id="pending-users" style="list-style: none; padding: 0;"></ul>
+                <h3>Игроки (player)</h3>
+                <ul id="player-users" style="list-style: none; padding: 0;"></ul>
             </div>
         </div>
 
-        <!-- Создание документа (для работников и админа) -->
+        <!-- Создание документа (будет использоваться как содержимое раздела) -->
         <div class="card" id="create-doc-section" style="display: none;">
             <h2><i class="fa-solid fa-file-circle-plus"></i> Создать документ</h2>
             <label>Тип документа</label>
@@ -265,57 +317,139 @@
         }
 
         let currentUserRole = null;
+        let currentNickname = null;
+        let activeTab = 'my-docs'; // отслеживаем активную вкладку
 
         // --- Обновление интерфейса ---
-        function updateUI() {
+        async function updateUI() {
             const user = auth.currentUser;
             const authForms = document.getElementById('auth-forms');
             const userPanel = document.getElementById('user-panel');
-            const createSection = document.getElementById('create-doc-section');
+            const createDocSection = document.getElementById('create-doc-section');
             const adminSection = document.getElementById('admin-section');
-            const approvedBadge = document.getElementById('approved-badge');
+            const roleBadge = document.getElementById('role-badge');
+            const tabCreateDoc = document.getElementById('tab-create-doc');
             const nicknameArea = document.getElementById('nickname-area');
 
-            if (user) {
-                authForms.style.display = 'none';
-                userPanel.style.display = 'block';
-                document.getElementById('current-user').textContent = user.email;
-
-                if (currentUserRole === 'worker' || currentUserRole === 'admin') {
-                    approvedBadge.style.display = 'inline';
-                    createSection.style.display = 'block';
-                    // В будущем можно загрузить никнейм из базы
-                    nicknameArea.style.display = 'none'; // Пока скрыто
-                } else {
-                    approvedBadge.style.display = 'none';
-                    createSection.style.display = 'none';
-                }
-
-                if (currentUserRole === 'admin') {
-                    adminSection.style.display = 'block';
-                    loadPendingUsers();
-                } else {
-                    adminSection.style.display = 'none';
-                }
-            } else {
+            if (!user) {
                 authForms.style.display = 'block';
                 userPanel.style.display = 'none';
-                createSection.style.display = 'none';
+                createDocSection.style.display = 'none';
                 adminSection.style.display = 'none';
-                approvedBadge.style.display = 'none';
                 showLogin();
+                return;
+            }
+
+            authForms.style.display = 'none';
+            userPanel.style.display = 'block';
+            document.getElementById('current-user').textContent = user.email;
+
+            // Загружаем никнейм
+            const nickSnap = await db.ref('users/' + user.uid + '/nickname').once('value');
+            currentNickname = nickSnap.val() || '';
+            document.getElementById('user-nickname').value = currentNickname;
+
+            // Роль
+            if (currentUserRole === 'worker') {
+                roleBadge.textContent = ' (работник банка)';
+                tabCreateDoc.style.display = 'inline-block';
+            } else if (currentUserRole === 'admin') {
+                roleBadge.textContent = ' (администратор)';
+                tabCreateDoc.style.display = 'inline-block';
+                adminSection.style.display = 'block';
+                loadAdminPlayerList();
+            } else {
+                roleBadge.textContent = ' (игрок)';
+                tabCreateDoc.style.display = 'none';
+                adminSection.style.display = 'none';
+            }
+
+            // Скрываем создание документа (покажет вкладка)
+            createDocSection.style.display = 'none';
+
+            // Активируем вкладку "Мои документы" по умолчанию
+            switchTab('my-docs');
+        }
+
+        // --- Переключение вкладок ---
+        function switchTab(tabName) {
+            activeTab = tabName;
+            // Обновляем активные кнопки
+            document.querySelectorAll('.btn-tab').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.tab === tabName) btn.classList.add('active');
+            });
+            const createDocSection = document.getElementById('create-doc-section');
+            const sectionContent = document.getElementById('section-content');
+
+            if (tabName === 'create-doc') {
+                // Показать форму создания документа
+                createDocSection.style.display = 'block';
+                sectionContent.innerHTML = '';
+            } else {
+                createDocSection.style.display = 'none';
+                // Загрузить контент раздела
+                sectionContent.innerHTML = '';
+                if (tabName === 'my-docs') {
+                    loadMyDocumentsTab();
+                } else if (tabName === 'my-businesses') {
+                    sectionContent.innerHTML = '<p style="color: var(--text-secondary);">🏢 Мои бизнесы — раздел в разработке. Скоро здесь появится информация о ваших предприятиях.</p>';
+                } else if (tabName === 'my-job') {
+                    sectionContent.innerHTML = '<p style="color: var(--text-secondary);">💼 Моя работа — раздел в разработке. Здесь будет отображаться ваша текущая должность и задачи.</p>';
+                }
             }
         }
 
-        // --- Загрузка роли ---
+        // --- Загрузка документов во вкладке ---
+        async function loadMyDocumentsTab() {
+            const content = document.getElementById('section-content');
+            if (!currentNickname) {
+                content.innerHTML = '<p style="color: var(--text-secondary);">Сначала сохраните свой никнейм выше, чтобы видеть документы.</p>';
+                return;
+            }
+            content.innerHTML = '<p>Загрузка документов...</p>';
+            try {
+                const snap = await db.ref('documents').orderByChild('player').equalTo(currentNickname).once('value');
+                const docs = snap.val() || {};
+                const arr = Object.values(docs);
+                if (arr.length === 0) {
+                    content.innerHTML = '<p style="color: var(--text-secondary);">У вас пока нет документов.</p>';
+                } else {
+                    let html = '<ul class="my-docs-list">';
+                    arr.forEach(doc => {
+                        html += `
+                            <li>
+                                <span><strong>${doc.type}</strong> – ${doc.number}</span>
+                                <span style="color:var(--text-secondary);">${doc.date}</span>
+                            </li>`;
+                    });
+                    html += '</ul>';
+                    content.innerHTML = html;
+                }
+            } catch (e) {
+                content.innerHTML = `<div class="alert alert-error">Ошибка загрузки: ${e.message}</div>`;
+            }
+        }
+
+        // --- Привязка событий вкладок ---
+        document.addEventListener('click', (e) => {
+            const tabBtn = e.target.closest('.btn-tab');
+            if (tabBtn) {
+                const tab = tabBtn.dataset.tab;
+                if (tab) switchTab(tab);
+            }
+        });
+
+        // --- Остальные функции (регистрация, вход, выход и т.д.) без изменений, кроме удаления старых "мои документы" ---
         async function loadUserRole(uid) {
             try {
                 const snap = await db.ref('roles/' + uid).once('value');
-                currentUserRole = snap.val() || 'pending';
-                if (currentUserRole === 'pending') {
+                currentUserRole = snap.val() || 'player';
+                if (!snap.exists()) {
+                    await db.ref('roles/' + uid).set('player');
                     await db.ref('users/' + uid).update({
                         email: auth.currentUser.email,
-                        role: 'pending'
+                        role: 'player'
                     });
                 }
                 updateUI();
@@ -324,7 +458,6 @@
             }
         }
 
-        // --- Отслеживание аутентификации ---
         auth.onAuthStateChanged(user => {
             if (user) {
                 loadUserRole(user.uid);
@@ -334,7 +467,6 @@
             }
         });
 
-        // --- Регистрация ---
         async function register() {
             const email = document.getElementById('reg-email').value.trim();
             const password = document.getElementById('reg-password').value.trim();
@@ -342,19 +474,17 @@
             if (!email || !password) { showMessage(msg, 'error', 'Введите email и пароль.'); return; }
             try {
                 const userCred = await auth.createUserWithEmailAndPassword(email, password);
-                await db.ref('roles/' + userCred.user.uid).set('pending');
+                await db.ref('roles/' + userCred.user.uid).set('player');
                 await db.ref('users/' + userCred.user.uid).set({
                     email: email,
-                    role: 'pending'
+                    role: 'player'
                 });
-                showMessage(msg, 'success', 'Регистрация прошла успешно. Ожидайте одобрения администратора.');
-                // После регистрации автоматически войдёт, интерфейс обновится
+                showMessage(msg, 'success', 'Регистрация прошла успешно!');
             } catch (error) {
                 showMessage(msg, 'error', error.message);
             }
         }
 
-        // --- Вход по email ---
         async function login() {
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value.trim();
@@ -368,7 +498,6 @@
             }
         }
 
-        // --- Вход через Google ---
         async function loginWithGoogle() {
             const provider = new firebase.auth.GoogleAuthProvider();
             try {
@@ -376,10 +505,10 @@
                 const user = result.user;
                 const snap = await db.ref('roles/' + user.uid).once('value');
                 if (!snap.exists()) {
-                    await db.ref('roles/' + user.uid).set('pending');
+                    await db.ref('roles/' + user.uid).set('player');
                     await db.ref('users/' + user.uid).set({
                         email: user.email,
-                        role: 'pending'
+                        role: 'player'
                     });
                 }
             } catch (error) {
@@ -389,39 +518,58 @@
             }
         }
 
-        // --- Выход ---
+        async function saveNickname() {
+            const nick = document.getElementById('user-nickname').value.trim();
+            const msg = document.getElementById('nickname-message');
+            if (!nick) {
+                showMessage(msg, 'error', 'Введите никнейм.');
+                return;
+            }
+            try {
+                await db.ref('users/' + auth.currentUser.uid + '/nickname').set(nick);
+                currentNickname = nick;
+                showMessage(msg, 'success', 'Никнейм сохранён!');
+                // Если активна вкладка "Мои документы", обновим её
+                if (activeTab === 'my-docs') {
+                    loadMyDocumentsTab();
+                }
+            } catch (e) {
+                showMessage(msg, 'error', 'Ошибка сохранения: ' + e.message);
+            }
+        }
+
         function logout() {
             auth.signOut();
         }
 
-        // --- Админ: заявки ---
-        async function loadPendingUsers() {
-            const list = document.getElementById('pending-users');
+        async function loadAdminPlayerList() {
+            const list = document.getElementById('player-users');
             list.innerHTML = '';
             try {
                 const usersSnap = await db.ref('users').once('value');
                 const users = usersSnap.val() || {};
-                let hasPending = false;
+                let hasPlayers = false;
                 for (const [uid, userData] of Object.entries(users)) {
-                    if (userData.role === 'pending') {
-                        hasPending = true;
+                    if (userData.role === 'player') {
+                        hasPlayers = true;
                         const li = document.createElement('li');
                         li.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border);';
-                        li.innerHTML = `<span>${userData.email}</span> <button class="btn" onclick="approveUser('${uid}')"><i class="fa-solid fa-check"></i> Одобрить</button>`;
+                        const nickname = userData.nickname || 'без ника';
+                        li.innerHTML = `<span>${userData.email} (${nickname})</span> <button class="btn" onclick="promoteToWorker('${uid}')"><i class="fa-solid fa-arrow-up"></i> Сделать работником</button>`;
                         list.appendChild(li);
                     }
                 }
-                if (!hasPending) list.innerHTML = '<li>Нет заявок на одобрение.</li>';
+                if (!hasPlayers) list.innerHTML = '<li>Нет игроков для повышения.</li>';
             } catch (e) {
                 console.error(e);
             }
         }
 
-        async function approveUser(uid) {
+        async function promoteToWorker(uid) {
             try {
                 await db.ref('roles/' + uid).set('worker');
                 await db.ref('users/' + uid + '/role').set('worker');
-                loadPendingUsers();
+                loadAdminPlayerList();
                 if (auth.currentUser && auth.currentUser.uid === uid) {
                     currentUserRole = 'worker';
                     updateUI();
@@ -431,7 +579,6 @@
             }
         }
 
-        // --- Создание документа ---
         async function createDocument() {
             if (!auth.currentUser || (currentUserRole !== 'worker' && currentUserRole !== 'admin')) {
                 alert('Недостаточно прав.');
@@ -454,15 +601,14 @@
             };
             try {
                 await db.ref('documents').push(doc);
-                showMessage(msg, 'success', `✅ Документ создан! Номер: <strong>${number}</strong> (сообщите игроку).`);
+                showMessage(msg, 'success', `✅ Документ создан! Номер: <strong>${number}</strong>`);
                 document.getElementById('player-nick').value = '';
                 document.getElementById('doc-date').value = '';
             } catch (e) {
-                showMessage(msg, 'error', 'Ошибка сохранения: ' + e.message);
+                showMessage(msg, 'error', 'Ошибка: ' + e.message);
             }
         }
 
-        // --- Поиск документа ---
         async function searchDocument() {
             const number = document.getElementById('search-number').value.trim();
             const resultDiv = document.getElementById('search-result');
@@ -505,7 +651,7 @@
             el.innerHTML = text;
         }
 
-        // --- Инициализация: показываем вход ---
+        // Инициализация
         showLogin();
     </script>
 </body>
