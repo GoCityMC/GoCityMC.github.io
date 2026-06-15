@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Панель GoCity</title>
     <!-- reCAPTCHA v3 (замените ВАШ_SITE_KEY на ваш ключ) -->
-    <script src="https://www.google.com/recaptcha/api.js?render=6Le7bB8tAAAAACty89w_IqSDbZrCdVi-dd6xTbbn"></script>
+    <script src="https://www.google.com/recaptcha/api.js?render=ВАШ_SITE_KEY"></script>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -379,4 +379,307 @@
 
             const activeSection = document.querySelector('.section-panel.active');
             if (activeSection) {
-                const id = activeSection.id.replace('sect
+                const id = activeSection.id.replace('section-', '');
+                if (id === 'create-doc' && !(currentUserRole === 'worker' || currentUserRole === 'admin')) {
+                    switchSection('my-docs');
+                } else if (id === 'admin' && currentUserRole !== 'admin') {
+                    switchSection('my-docs');
+                }
+            }
+        }
+
+        function loadAccountInfo() {
+            if (!auth.currentUser) return;
+            document.getElementById('account-email').textContent = auth.currentUser.email;
+            const roleMap = { player: 'Игрок', worker: 'Работник банка', admin: 'Администратор' };
+            document.getElementById('account-role').textContent = roleMap[currentUserRole] || 'Неизвестно';
+            document.getElementById('user-nickname').value = currentNickname || '';
+        }
+
+        async function loadUserRole(uid) {
+            try {
+                const snap = await db.ref('roles/' + uid).once('value');
+                currentUserRole = snap.val() || 'player';
+                if (!snap.exists()) {
+                    await db.ref('roles/' + uid).set('player');
+                    await db.ref('users/' + uid).update({ email: auth.currentUser.email, role: 'player' });
+                }
+                updateUI();
+            } catch (e) { console.error(e); }
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                loadUserRole(user.uid);
+            } else {
+                currentUserRole = null;
+                updateUI();
+                showLogin();
+            }
+        });
+
+        // ========== reCAPTCHA + Регистрация ==========
+        async function register() {
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value.trim();
+            const msg = document.getElementById('auth-message');
+            if (!email || !password) { showMessage(msg, 'error', 'Введите email и пароль.'); return; }
+
+            const token = await executeRecaptcha('register');
+            if (!token || !(await verifyRecaptchaToken(token, 'register'))) {
+                showMessage(msg, 'error', 'Подозрительная активность. Попробуйте позже.');
+                return;
+            }
+
+            try {
+                const cred = await auth.createUserWithEmailAndPassword(email, password);
+                await db.ref('roles/' + cred.user.uid).set('player');
+                await db.ref('users/' + cred.user.uid).set({ email, role: 'player' });
+                showMessage(msg, 'success', 'Регистрация успешна!');
+            } catch (e) { showMessage(msg, 'error', e.message); }
+        }
+
+        // ========== reCAPTCHA + Вход email ==========
+        async function login() {
+            const email = document.getElementById('login-email').value.trim();
+            const pass = document.getElementById('login-password').value.trim();
+            const msg = document.getElementById('auth-message');
+            if (!email || !pass) { showMessage(msg, 'error', 'Введите email и пароль.'); return; }
+
+            const token = await executeRecaptcha('login');
+            if (!token || !(await verifyRecaptchaToken(token, 'login'))) {
+                showMessage(msg, 'error', 'Подозрительная активность. Попробуйте позже.');
+                return;
+            }
+
+            try {
+                await auth.signInWithEmailAndPassword(email, pass);
+                showMessage(msg, 'none');
+            } catch (e) { showMessage(msg, 'error', e.message); }
+        }
+
+        // ========== Google + reCAPTCHA ==========
+        async function loginWithGoogle() {
+            const token = await executeRecaptcha('google_login');
+            if (!token || !(await verifyRecaptchaToken(token, 'google_login'))) {
+                showMessage(document.getElementById('auth-message'), 'error', 'Подозрительная активность. Попробуйте позже.');
+                return;
+            }
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                const result = await auth.signInWithPopup(provider);
+                const user = result.user;
+                const snap = await db.ref('roles/' + user.uid).once('value');
+                if (!snap.exists()) {
+                    await db.ref('roles/' + user.uid).set('player');
+                    await db.ref('users/' + user.uid).set({ email: user.email, role: 'player' });
+                }
+            } catch (e) {
+                if (e.code !== 'auth/popup-closed-by-user') showMessage(document.getElementById('auth-message'), 'error', e.message);
+            }
+        }
+
+        // ========== reCAPTCHA + Создание документа ==========
+        async function createDocument() {
+            if (!auth.currentUser || (currentUserRole !== 'worker' && currentUserRole !== 'admin')) {
+                alert('Нет прав.'); return;
+            }
+            const token = await executeRecaptcha('create_doc');
+            if (!token || !(await verifyRecaptchaToken(token, 'create_doc'))) {
+                showMessage(document.getElementById('create-message'), 'error', 'Подозрительная активность.');
+                return;
+            }
+
+            const type = document.getElementById('doc-type').value;
+            const player = document.getElementById('player-nick').value.trim();
+            const date = document.getElementById('doc-date').value;
+            const msg = document.getElementById('create-message');
+            if (!player || !date) { showMessage(msg, 'error', 'Заполните ник и дату.'); return; }
+            const number = generateDocNumber();
+            const issueDate = new Date(date);
+            const expirationDate = new Date(issueDate);
+            expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+            try {
+                await db.ref('documents').push({
+                    number, type, player, date,
+                    expirationDate: expirationDate.toISOString(),
+                    issuedBy: auth.currentUser.email,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                showMessage(msg, 'success', `✅ Документ создан! Номер: <strong>${number}</strong>`);
+                document.getElementById('player-nick').value = '';
+                document.getElementById('doc-date').value = '';
+            } catch (e) { showMessage(msg, 'error', e.message); }
+        }
+
+        async function saveNickname() {
+            const nick = document.getElementById('user-nickname').value.trim();
+            const msg = document.getElementById('nickname-message');
+            if (!nick) { showMessage(msg, 'error', 'Введите ник.'); return; }
+            try {
+                await db.ref('users/' + auth.currentUser.uid + '/nickname').set(nick);
+                currentNickname = nick;
+                showMessage(msg, 'success', 'Ник сохранён!');
+            } catch (e) { showMessage(msg, 'error', e.message); }
+        }
+
+        async function loadMyDocs() {
+            const container = document.getElementById('my-docs-content');
+            if (!auth.currentUser) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">Сначала войдите в аккаунт.</p>';
+                return;
+            }
+            if (!currentNickname) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">Привяжите ник во вкладке «Мой аккаунт», чтобы видеть документы.</p>';
+                return;
+            }
+            container.innerHTML = 'Загрузка...';
+            try {
+                const snap = await db.ref('documents').orderByChild('player').equalTo(currentNickname).once('value');
+                const docs = snap.val() || {};
+                const arr = Object.values(docs);
+                if (arr.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-secondary);">Документов нет.</p>';
+                } else {
+                    let html = '<ul class="my-docs-list">';
+                    arr.forEach(doc => {
+                        const exp = doc.expirationDate ? new Date(doc.expirationDate) : null;
+                        const now = new Date();
+                        const valid = exp ? exp >= now : true;
+                        const statusIcon = valid ? '<i class="fa-solid fa-check-circle valid"></i>' : '<i class="fa-solid fa-times-circle expired"></i>';
+                        const statusText = valid ? 'Действителен' : 'Просрочен';
+                        html += `<li>
+                            <span><strong>${doc.type}</strong> – ${doc.number}</span>
+                            <span style="color:var(--text-secondary);">${doc.date} ${exp ? '| до ' + exp.toLocaleDateString() : ''}</span>
+                            <span class="${valid ? 'valid' : 'expired'}">${statusIcon} ${statusText}</span>
+                        </li>`;
+                    });
+                    html += '</ul>';
+                    container.innerHTML = html;
+                }
+            } catch (e) { container.innerHTML = `<div class="alert alert-error">Ошибка: ${e.message}</div>`; }
+        }
+
+        async function searchDocument() {
+            const number = document.getElementById('search-number').value.trim();
+            const resultDiv = document.getElementById('search-result');
+            if (!number) { resultDiv.innerHTML = '<div class="alert alert-error">Введите номер.</div>'; return; }
+            try {
+                const snap = await db.ref('documents').orderByChild('number').equalTo(number).once('value');
+                const docs = snap.val();
+                if (!docs) { resultDiv.innerHTML = '<div class="alert alert-error">Документ не найден.</div>'; return; }
+                const doc = Object.values(docs)[0];
+                const exp = doc.expirationDate ? new Date(doc.expirationDate) : null;
+                const now = new Date();
+                const valid = exp ? exp >= now : true;
+                const statusIcon = valid ? '<i class="fa-solid fa-check-circle valid"></i>' : '<i class="fa-solid fa-times-circle expired"></i>';
+                resultDiv.innerHTML = `
+                    <div class="document-view">
+                        <h3><i class="fa-solid fa-file-lines"></i> ${doc.type}</h3>
+                        <p><span>Номер:</span> ${doc.number}</p>
+                        <p><span>Игрок:</span> ${doc.player}</p>
+                        <p><span>Дата выдачи:</span> ${doc.date}</p>
+                        <p><span>Кем выдан:</span> ${doc.issuedBy}</p>
+                        ${exp ? `<p><span>Срок действия:</span> до ${exp.toLocaleDateString()}</p>` : ''}
+                        <p class="${valid ? 'valid' : 'expired'}">${statusIcon} <strong>${valid ? 'Документ действителен' : 'Документ просрочен'}</strong></p>
+                    </div>`;
+            } catch (e) { resultDiv.innerHTML = `<div class="alert alert-error">Ошибка: ${e.message}</div>`; }
+        }
+
+        function generateDocNumber() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < 10; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+            return result;
+        }
+
+        // ========== Админ-панель (полные реализации) ==========
+        async function loadAllUsers() {
+            const tbody = document.getElementById('all-users-list');
+            tbody.innerHTML = '<tr><td colspan="4">Загрузка...</td></tr>';
+            try {
+                const snap = await db.ref('users').once('value');
+                const users = snap.val() || {};
+                const rows = [];
+                for (const [uid, u] of Object.entries(users)) {
+                    const role = u.role || 'player';
+                    rows.push({ uid, email: u.email, nickname: u.nickname || '-', role });
+                }
+                if (rows.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4">Нет пользователей.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = rows.map(r => `
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px;">${r.email}</td>
+                        <td style="padding: 8px;">${r.nickname}</td>
+                        <td style="padding: 8px;">
+                            <select onchange="changeUserRole('${r.uid}', this.value)" data-original="${r.role}">
+                                <option value="player" ${r.role === 'player' ? 'selected' : ''}>Игрок</option>
+                                <option value="worker" ${r.role === 'worker' ? 'selected' : ''}>Работник банка</option>
+                                <option value="admin" ${r.role === 'admin' ? 'selected' : ''}>Администратор</option>
+                            </select>
+                        </td>
+                        <td style="padding: 8px;">
+                            <button class="btn" onclick="changeUserRole('${r.uid}', document.querySelector(\`select[data-original='${r.role}']\`).value)">Сохранить</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="4">Ошибка: ${e.message}</td></tr>`;
+            }
+        }
+
+        async function changeUserRole(uid, newRole) {
+            try {
+                await db.ref('roles/' + uid).set(newRole);
+                await db.ref('users/' + uid + '/role').set(newRole);
+                alert('Роль обновлена.');
+                loadAllUsers();
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        async function loadStats() {
+            const container = document.getElementById('stats-content');
+            container.innerHTML = 'Загрузка...';
+            try {
+                const [usersSnap, docsSnap] = await Promise.all([
+                    db.ref('users').once('value'),
+                    db.ref('documents').once('value')
+                ]);
+                const users = usersSnap.val() || {};
+                const docs = docsSnap.val() || {};
+                let playerCount = 0, workerCount = 0, adminCount = 0;
+                for (const u of Object.values(users)) {
+                    if (u.role === 'player') playerCount++;
+                    else if (u.role === 'worker') workerCount++;
+                    else if (u.role === 'admin') adminCount++;
+                }
+                const totalDocs = Object.keys(docs).length;
+                container.innerHTML = `
+                    <p><i class="fa-solid fa-user"></i> Игроков: <strong>${playerCount}</strong></p>
+                    <p><i class="fa-solid fa-building-columns"></i> Работников банка: <strong>${workerCount}</strong></p>
+                    <p><i class="fa-solid fa-user-shield"></i> Администраторов: <strong>${adminCount}</strong></p>
+                    <p><i class="fa-solid fa-file-lines"></i> Всего документов: <strong>${totalDocs}</strong></p>
+                `;
+            } catch (e) {
+                container.innerHTML = `<div class="alert alert-error">Ошибка: ${e.message}</div>`;
+            }
+        }
+
+        function showMessage(el, type, text) {
+            if (type === 'none') { el.style.display = 'none'; return; }
+            el.style.display = 'block';
+            el.className = 'alert ' + (type === 'error' ? 'alert-error' : 'alert-success');
+            el.innerHTML = text;
+        }
+
+        function logout() { auth.signOut(); }
+
+        // Старт
+        switchSection('check-doc');
+    </script>
+</body>
+</html>
